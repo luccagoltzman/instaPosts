@@ -143,6 +143,34 @@
   line-height: 1.35;
 }
 
+.comingSoon {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1rem;
+  background: var(--ig-bg-secondary, #fafafa);
+  border: 1px dashed var(--ig-border-light);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.comingSoonIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.comingSoonText {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--ig-text-secondary, #737373);
+}
+
+.comingSoonText strong {
+  color: var(--ig-text);
+  font-weight: 600;
+}
+
 .converting {
   padding: 1.25rem;
   text-align: center;
