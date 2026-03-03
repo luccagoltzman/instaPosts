@@ -110,10 +110,52 @@ function findPostsArray(value: unknown): unknown[] | null {
   return null;
 }
 
-/** Extrai cursor da próxima página (page_info.end_cursor ou último edge.cursor). */
-function extractNextMaxId(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null;
+const PAGINATION_KEYS = [
+  'next_max_id',
+  'nextMaxId',
+  'max_id',
+  'end_cursor',
+  'cursor',
+  'next_cursor',
+  'nextCursor',
+  'next_page_id',
+  'nextPageId',
+] as const;
+
+/** Procura recursivamente por um valor de cursor em qualquer nível do objeto (até 10 níveis). */
+function findCursorInObject(obj: Record<string, unknown>, depth: number): string | null {
+  if (depth <= 0) return null;
+  for (const key of PAGINATION_KEYS) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.trim().length > 0) return val;
+  }
+  const pagination = obj.pagination as Record<string, unknown> | undefined;
+  if (pagination && typeof pagination === 'object') {
+    for (const key of PAGINATION_KEYS) {
+      const val = (pagination as Record<string, unknown>)[key];
+      if (typeof val === 'string' && val.trim().length > 0) return val;
+    }
+    const nextUrl = (pagination as Record<string, unknown>).next_url as string | undefined;
+    if (typeof nextUrl === 'string') {
+      const match = nextUrl.match(/[?&]max_id=([^&]+)/);
+      if (match?.[1]) return decodeURIComponent(match[1]);
+    }
+  }
+  for (const key of Object.keys(obj)) {
+    const child = obj[key];
+    if (child && typeof child === 'object' && !Array.isArray(child)) {
+      const found = findCursorInObject(child as Record<string, unknown>, depth - 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Extrai cursor da próxima página (vários formatos da API Instagram120 e similares). */
+function extractNextMaxId(data: unknown, lastPostId?: string | null): string | null {
+  if (!data || typeof data !== 'object') return lastPostId ?? null;
   const obj = data as Record<string, unknown>;
+
   const dataObj = obj.data as Record<string, unknown> | undefined;
   const user = (dataObj?.user ?? obj.user) as Record<string, unknown> | undefined;
   const timeline = user?.edge_owner_to_timeline_media ?? user?.edge_media_collections;
@@ -127,9 +169,14 @@ function extractNextMaxId(data: unknown): string | null {
       if (last?.cursor) return last.cursor;
     }
   }
-  const next = obj.next_max_id ?? obj.nextMaxId ?? obj.cursor;
-  if (typeof next === 'string' && next) return next;
-  return null;
+
+  const direct = obj.next_max_id ?? obj.nextMaxId ?? obj.cursor;
+  if (typeof direct === 'string' && direct.trim()) return direct;
+
+  const fromPagination = findCursorInObject(obj, 10);
+  if (fromPagination) return fromPagination;
+
+  return lastPostId ?? null;
 }
 
 function extractPosts(data: unknown): InstagramPost[] {
@@ -235,7 +282,8 @@ export async function fetchInstagramPosts(
 
   const data = await response.json();
   const posts = extractPosts(data);
-  const nextMaxId = extractNextMaxId(data);
+  const lastId = posts.length > 0 ? posts[posts.length - 1].id : null;
+  const nextMaxId = extractNextMaxId(data, lastId);
   return { posts, nextMaxId };
 }
 

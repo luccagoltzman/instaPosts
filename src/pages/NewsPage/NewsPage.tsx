@@ -53,7 +53,11 @@ export function NewsPage(): JSX.Element {
         username: username.trim(),
         maxId: nextMaxId,
       });
-      setPosts((prev) => [...prev, ...newPosts]);
+      setPosts((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const onlyNew = newPosts.filter((p) => !existingIds.has(p.id));
+        return onlyNew.length > 0 ? [...prev, ...onlyNew] : prev;
+      });
       setNextMaxId(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar mais.');
@@ -119,8 +123,14 @@ export function NewsPage(): JSX.Element {
               post={downloadModalPost}
               onClose={() => setDownloadModalPost(null)}
             />
-            {nextMaxId && (
-              <div className={styles.loadMoreWrap}>
+            <div className={styles.loadMoreWrap}>
+              {posts.length > 0 && (
+                <p className={styles.postsCount} aria-live="polite">
+                  {posts.length} {posts.length === 1 ? 'post carregado' : 'posts carregados'}
+                  {nextMaxId && ' · Clique em "Ver mais" para carregar o restante do perfil'}
+                </p>
+              )}
+              {nextMaxId ? (
                 <Button
                   variant="primary"
                   size="lg"
@@ -133,11 +143,15 @@ export function NewsPage(): JSX.Element {
                       Carregando...
                     </>
                   ) : (
-                    'Carregar mais mídias'
+                    'Ver mais'
                   )}
                 </Button>
-              </div>
-            )}
+              ) : (
+                posts.length > 0 && (
+                  <p className={styles.allLoaded}>Todos os posts disponíveis foram carregados.</p>
+                )
+              )}
+            </div>
           </>
         )}
       </section>
