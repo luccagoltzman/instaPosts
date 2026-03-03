@@ -1,17 +1,25 @@
-/* Reset e variáveis globais */
+/* Reset e variáveis — visual inspirado no Instagram */
 :root {
-  --color-primary: #0d6efd;
-  --color-primary-hover: #0b5ed7;
-  --color-secondary: #6c757d;
-  --color-text: #212529;
-  --color-text-muted: #6c757d;
-  --color-border: #dee2e6;
-  --color-bg: #fff;
-  --color-bg-hover: #f8f9fa;
-  --color-header-bg: #f8f9fa;
-  --color-card-bg: #fff;
-  --color-input-bg: #fff;
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ig-bg: #fafafa;
+  --ig-bg-white: #ffffff;
+  --ig-border: #dbdbdb;
+  --ig-border-light: #efefef;
+  --ig-text: #262626;
+  --ig-text-secondary: #8e8e8e;
+  --ig-link: #0095f6;
+  --ig-link-hover: #00376b;
+  --ig-error: #ed4956;
+  --ig-gradient-start: #f09433;
+  --ig-gradient-mid: #e6683c;
+  --ig-gradient-end: #dc2743;
+  --ig-gradient-purple: #cc2366;
+  --ig-gradient-blue: #bc1888;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 22px;
 }
 
 *,
@@ -31,8 +39,8 @@ body {
   font-family: var(--font-sans);
   font-size: 1rem;
   line-height: 1.5;
-  color: var(--color-text);
-  background: var(--color-bg);
+  color: var(--ig-text);
+  background: var(--ig-bg);
 }
 
 #root {
@@ -40,12 +48,18 @@ body {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--ig-link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--ig-link-hover);
 }
 
 a:focus-visible,
 button:focus-visible,
+input:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--ig-link);
   outline-offset: 2px;
 }

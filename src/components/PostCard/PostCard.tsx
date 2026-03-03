@@ -20,39 +20,50 @@ export function PostCard({ post, className = '', ...rest }: PostCardProps): JSX.
   };
 
   return (
-    <div className={`${styles.card} ${className}`.trim()} {...rest}>
-      <a
-        href={post.permalink}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={styles.link}
-      >
-        <div className={styles.media}>
-          {thumbUrl && (
-            <img
-              src={thumbUrl}
-              alt=""
-              className={styles.thumbnail}
-              loading="lazy"
-            />
-          )}
-          {isVideo && <span className={styles.badge}>Vídeo</span>}
-        </div>
-        {post.caption && (
-          <p className={styles.caption}>{post.caption}</p>
+    <article className={`${styles.card} ${className}`.trim()} {...rest}>
+      <div className={styles.media}>
+        {thumbUrl && (
+          <img
+            src={thumbUrl}
+            alt=""
+            className={styles.thumbnail}
+            loading="lazy"
+          />
         )}
-      </a>
-      {downloadUrl && (
-        <button
-          type="button"
-          className={styles.downloadBtn}
-          onClick={handleDownload}
-          title="Baixar mídia"
-          aria-label="Baixar mídia"
-        >
-          Download
-        </button>
-      )}
-    </div>
+        {isVideo && (
+          <span className={styles.videoIcon} aria-hidden>
+            <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        )}
+        <div className={styles.overlay}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={handleDownload}
+            title="Baixar"
+            aria-label="Baixar mídia"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            <span>Baixar</span>
+          </button>
+          <a
+            href={post.permalink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.actionBtn}
+            title="Abrir no Instagram"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+            </svg>
+            <span>Abrir</span>
+          </a>
+        </div>
+      </div>
+    </article>
   );
 }

@@ -6,13 +6,13 @@
   font-family: inherit;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s, transform 0.1s;
+  transition: background-color 0.2s, opacity 0.2s, transform 0.1s;
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -20,49 +20,48 @@
   transform: scale(0.98);
 }
 
-/* Variants */
 .primary {
-  background-color: var(--color-primary, #0d6efd);
-  color: #fff;
+  background: var(--ig-link);
+  color: var(--ig-bg-white);
 }
 
 .primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover, #0b5ed7);
+  background: var(--ig-link-hover);
 }
 
 .secondary {
-  background-color: var(--color-secondary, #6c757d);
-  color: #fff;
+  background: var(--ig-border);
+  color: var(--ig-text);
 }
 
 .secondary:hover:not(:disabled) {
-  background-color: #5c636a;
+  background: var(--ig-border-light);
+  color: var(--ig-text);
 }
 
 .ghost {
-  background-color: transparent;
-  color: var(--color-text, #212529);
-  border: 1px solid var(--color-border, #dee2e6);
+  background: transparent;
+  color: var(--ig-text);
+  border: 1px solid var(--ig-border);
 }
 
 .ghost:hover:not(:disabled) {
-  background-color: var(--color-bg-hover, #f8f9fa);
+  background: var(--ig-bg);
 }
 
-/* Sizes */
 .sm {
-  padding: 0.375rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   font-size: 0.875rem;
 }
 
 .md {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9375rem;
 }
 
 .lg {
   padding: 0.75rem 1.5rem;
-  font-size: 1.125rem;
+  font-size: 1rem;
 }
 
 .fullWidth {
