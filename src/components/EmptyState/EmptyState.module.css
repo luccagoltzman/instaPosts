@@ -1,0 +1,13 @@
+.wrapper {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--color-card-bg, #fff);
+  border: 1px dashed var(--color-border, #dee2e6);
+  border-radius: 12px;
+}
+
+.message {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text-muted, #6c757d);
+}
