@@ -35,6 +35,8 @@ src/
 
 A aplicação usa a API **Instagram120** na RapidAPI.
 
+### Desenvolvimento local
+
 1. Crie um arquivo `.env` na raiz do projeto.
 2. Adicione sua chave da RapidAPI:
 
@@ -44,7 +46,16 @@ VITE_RAPIDAPI_KEY=sua_chave_aqui
 
 Opcional: para outro host, defina `VITE_RAPIDAPI_HOST`. O padrão é `instagram120.p.rapidapi.com`.
 
-A API é chamada com **POST** em `/api/instagram/posts`, corpo JSON: `{"username":"...", "maxId":""}`.
+### Produção (Vercel) — uso seguro da chave
+
+Em produção o frontend **não** envia a chave ao navegador. As requisições passam por um **proxy** (funções serverless em `/api/instagram/*`), e a chave fica só no servidor.
+
+1. No [Dashboard da Vercel](https://vercel.com) → seu projeto → **Settings** → **Environment Variables**.
+2. Crie a variável **`RAPIDAPI_KEY`** (nome exato) com o valor da sua chave da RapidAPI.
+3. Marque o ambiente **Production** (e opcionalmente Preview).
+4. Faça um novo deploy.
+
+Assim a chave nunca é exposta no cliente e a comunicação com a API em produção funciona de forma segura.
 
 ## Scripts
 

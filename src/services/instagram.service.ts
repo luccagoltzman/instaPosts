@@ -2,7 +2,7 @@
  * Serviço de comunicação com a API de posts do Instagram (RapidAPI - Instagram120).
  */
 
-import { API_BASE_URL, API_ENDPOINTS, RAPIDAPI_HEADERS } from '@/config/constants';
+import { API_BASE_URL, API_ENDPOINTS, getApiHeaders, USE_PROXY } from '@/config/constants';
 import type { InstagramPost, InstagramPostParams, InstagramPostsResponse, MediaByShortcodeParams } from '@/types/instagram.types';
 
 function getFirstImageUrl(item: Record<string, unknown>): string {
@@ -205,7 +205,7 @@ function extractPosts(data: unknown): InstagramPost[] {
 export async function fetchInstagramPosts(
   params: InstagramPostParams
 ): Promise<InstagramPostsResponse> {
-  if (!RAPIDAPI_HEADERS['x-rapidapi-key']) {
+  if (!USE_PROXY && !getApiHeaders()['x-rapidapi-key']) {
     throw new Error('Configure VITE_RAPIDAPI_KEY no arquivo .env');
   }
 
@@ -217,7 +217,7 @@ export async function fetchInstagramPosts(
   const url = `${API_BASE_URL}${API_ENDPOINTS.INSTAGRAM_POSTS}`;
   const response = await fetch(url, {
     method: 'POST',
-    headers: RAPIDAPI_HEADERS as Record<string, string>,
+    headers: getApiHeaders(),
     body: JSON.stringify({
       username,
       maxId: params.maxId ?? '',
@@ -246,7 +246,7 @@ export async function fetchInstagramPosts(
 export async function fetchMediaByShortcode(
   params: MediaByShortcodeParams
 ): Promise<InstagramPost | null> {
-  if (!RAPIDAPI_HEADERS['x-rapidapi-key']) {
+  if (!USE_PROXY && !getApiHeaders()['x-rapidapi-key']) {
     throw new Error('Configure VITE_RAPIDAPI_KEY no arquivo .env');
   }
 
@@ -256,7 +256,7 @@ export async function fetchMediaByShortcode(
   const url = `${API_BASE_URL}${API_ENDPOINTS.MEDIA_BY_SHORTCODE}`;
   const response = await fetch(url, {
     method: 'POST',
-    headers: RAPIDAPI_HEADERS as Record<string, string>,
+    headers: getApiHeaders(),
     body: JSON.stringify({ shortcode }),
   });
 
