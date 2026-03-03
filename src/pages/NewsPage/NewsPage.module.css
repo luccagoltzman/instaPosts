@@ -46,3 +46,14 @@
 .list li {
   margin: 0;
 }
+
+.loadMoreWrap {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0 1rem;
+}
+
+.loadMoreWrap .button {
+  min-width: 200px;
+  gap: 0.5rem;
+}

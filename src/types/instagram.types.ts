@@ -18,3 +18,9 @@ export interface InstagramPost {
   caption: string;
   permalink: string;
 }
+
+/** Resposta paginada da API de posts (fotos + vídeos). */
+export interface InstagramPostsResponse {
+  posts: InstagramPost[];
+  nextMaxId: string | null;
+}

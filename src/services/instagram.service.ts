@@ -3,7 +3,7 @@
  */
 
 import { API_BASE_URL, API_ENDPOINTS, RAPIDAPI_HEADERS } from '@/config/constants';
-import type { InstagramPost, InstagramPostParams, MediaByShortcodeParams } from '@/types/instagram.types';
+import type { InstagramPost, InstagramPostParams, InstagramPostsResponse, MediaByShortcodeParams } from '@/types/instagram.types';
 
 function getFirstImageUrl(item: Record<string, unknown>): string {
   if (typeof item.display_url === 'string') return item.display_url;
@@ -110,6 +110,28 @@ function findPostsArray(value: unknown): unknown[] | null {
   return null;
 }
 
+/** Extrai cursor da próxima página (page_info.end_cursor ou último edge.cursor). */
+function extractNextMaxId(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const obj = data as Record<string, unknown>;
+  const dataObj = obj.data as Record<string, unknown> | undefined;
+  const user = (dataObj?.user ?? obj.user) as Record<string, unknown> | undefined;
+  const timeline = user?.edge_owner_to_timeline_media ?? user?.edge_media_collections;
+  if (timeline && typeof timeline === 'object') {
+    const t = timeline as Record<string, unknown>;
+    const pageInfo = t.page_info as { end_cursor?: string; has_next_page?: boolean } | undefined;
+    if (pageInfo?.end_cursor) return pageInfo.end_cursor;
+    const edges = t.edges as { cursor?: string }[] | undefined;
+    if (Array.isArray(edges) && edges.length > 0) {
+      const last = edges[edges.length - 1];
+      if (last?.cursor) return last.cursor;
+    }
+  }
+  const next = obj.next_max_id ?? obj.nextMaxId ?? obj.cursor;
+  if (typeof next === 'string' && next) return next;
+  return null;
+}
+
 function extractPosts(data: unknown): InstagramPost[] {
   if (!data) return [];
   if (Array.isArray(data)) {
@@ -182,14 +204,14 @@ function extractPosts(data: unknown): InstagramPost[] {
 
 export async function fetchInstagramPosts(
   params: InstagramPostParams
-): Promise<InstagramPost[]> {
+): Promise<InstagramPostsResponse> {
   if (!RAPIDAPI_HEADERS['x-rapidapi-key']) {
     throw new Error('Configure VITE_RAPIDAPI_KEY no arquivo .env');
   }
 
   const username = params.username?.trim();
   if (!username) {
-    return [];
+    return { posts: [], nextMaxId: null };
   }
 
   const url = `${API_BASE_URL}${API_ENDPOINTS.INSTAGRAM_POSTS}`;
@@ -212,7 +234,9 @@ export async function fetchInstagramPosts(
   }
 
   const data = await response.json();
-  return extractPosts(data);
+  const posts = extractPosts(data);
+  const nextMaxId = extractNextMaxId(data);
+  return { posts, nextMaxId };
 }
 
 /**
