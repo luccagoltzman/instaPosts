@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fetchInstagramPosts } from '@/services/instagram.service';
+import { fetchInstagramPosts, isRateLimitError } from '@/services/instagram.service';
 import type { InstagramPost } from '@/types/instagram.types';
 import { Layout } from '@/components/Layout/Layout';
 import { UsernameInput } from '@/components/UsernameInput/UsernameInput';
@@ -44,8 +44,10 @@ export function NewsPage(): JSX.Element {
     }
   };
 
+  const quotaBlocked = isRateLimitError(error);
+
   const loadMore = async () => {
-    if (!username.trim() || !nextMaxId || loadingMore) return;
+    if (!username.trim() || !nextMaxId || loadingMore || quotaBlocked) return;
     setLoadingMore(true);
     setError(null);
     try {
@@ -87,10 +89,16 @@ export function NewsPage(): JSX.Element {
         )}
 
         {!loading && error && (
-          <ErrorMessage
-            message={error}
-            onRetry={() => (nextMaxId && posts.length > 0 ? loadMore() : loadPosts())}
-          />
+          <div className={styles.errorBanner}>
+            <ErrorMessage
+              message={error}
+              onRetry={
+                isRateLimitError(error)
+                  ? undefined
+                  : () => (nextMaxId && posts.length > 0 ? loadMore() : loadPosts())
+              }
+            />
+          </div>
         )}
 
         {!loading && !error && !hasSearched && (
@@ -101,7 +109,7 @@ export function NewsPage(): JSX.Element {
           <EmptyState message="Nenhuma mídia encontrada para este usuário." />
         )}
 
-        {!loading && !error && posts.length > 0 && (
+        {!loading && posts.length > 0 && (
           <>
             <ul className={styles.list} aria-label="Lista de posts">
               {posts.map((post) => (
@@ -127,7 +135,7 @@ export function NewsPage(): JSX.Element {
               {posts.length > 0 && (
                 <p className={styles.postsCount} aria-live="polite">
                   {posts.length} {posts.length === 1 ? 'post carregado' : 'posts carregados'}
-                  {nextMaxId && ' · Clique em "Ver mais" para carregar o restante do perfil'}
+                  {nextMaxId && !quotaBlocked && ' · Clique em "Ver mais" para carregar o restante do perfil'}
                 </p>
               )}
               {nextMaxId ? (
@@ -135,7 +143,7 @@ export function NewsPage(): JSX.Element {
                   variant="primary"
                   size="lg"
                   onClick={loadMore}
-                  disabled={loadingMore}
+                  disabled={loadingMore || quotaBlocked}
                 >
                   {loadingMore ? (
                     <>

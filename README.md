@@ -1,6 +1,6 @@
 # Instagram Posts
 
-Frontend em React + TypeScript para buscar e exibir posts (fotos e vídeos) do Instagram por usuário, usando a API [Instagram120](https://rapidapi.com) da RapidAPI.
+Frontend em React + TypeScript para buscar e exibir posts (fotos e vídeos) do Instagram por usuário, usando a [Instagram Scraper Stable API](https://rapidapi.com/thetechguy32744/api/instagram-scraper-stable-api) da RapidAPI.
 
 ## Estrutura do projeto
 
@@ -33,7 +33,7 @@ src/
 
 ## Configuração da API (RapidAPI)
 
-A aplicação usa a API **Instagram120** na RapidAPI.
+A aplicação usa a **Instagram Scraper Stable API** na RapidAPI (`POST /get_ig_user_posts.php`).
 
 ### Desenvolvimento local
 
@@ -44,7 +44,9 @@ A aplicação usa a API **Instagram120** na RapidAPI.
 VITE_RAPIDAPI_KEY=sua_chave_aqui
 ```
 
-Opcional: para outro host, defina `VITE_RAPIDAPI_HOST`. O padrão é `instagram120.p.rapidapi.com`.
+Opcional: para outro host, defina `VITE_RAPIDAPI_HOST`. O padrão é `instagram-scraper-stable-api.p.rapidapi.com`.
+
+Em desenvolvimento o Vite encaminha `/api/instagram/*` para a RapidAPI, então a chave não vai para o navegador.
 
 ### Produção (Vercel) — uso seguro da chave
 

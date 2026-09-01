@@ -1,5 +1,5 @@
 /**
- * Tipos para a API de posts do Instagram (Instagram120 / RapidAPI).
+ * Tipos para a API de posts do Instagram (Instagram Scraper Stable API / RapidAPI).
  */
 
 export interface InstagramPostParams {

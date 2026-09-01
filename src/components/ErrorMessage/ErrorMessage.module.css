@@ -13,3 +13,7 @@
   color: var(--ig-error);
   line-height: 1.5;
 }
+
+.message:last-child {
+  margin-bottom: 0;
+}

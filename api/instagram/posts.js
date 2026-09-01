@@ -1,5 +1,5 @@
-const RAPIDAPI_HOST = 'instagram120.p.rapidapi.com';
-const RAPIDAPI_URL = `https://${RAPIDAPI_HOST}/api/instagram/posts`;
+const RAPIDAPI_HOST = 'instagram-scraper-stable-api.p.rapidapi.com';
+const RAPIDAPI_URL = `https://${RAPIDAPI_HOST}/get_ig_user_posts.php`;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,17 +14,19 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'object' && req.body !== null ? req.body : {};
+    const params = new URLSearchParams();
+    params.set('username_or_url', body.username || '');
+    params.set('amount', String(body.amount || 12));
+    params.set('pagination_token', body.maxId || body.pagination_token || '');
+
     const response = await fetch(RAPIDAPI_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'x-rapidapi-host': RAPIDAPI_HOST,
         'x-rapidapi-key': key,
       },
-      body: JSON.stringify({
-        username: body.username || '',
-        maxId: body.maxId || '',
-      }),
+      body: params.toString(),
     });
     const data = await response.json().catch(() => ({}));
     res.status(response.status).json(data);
