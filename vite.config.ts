@@ -80,6 +80,15 @@ function instagramDevProxy(apiKey: string): Plugin {
           headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
           body: params.toString(),
         };
+      } else if (url.startsWith('/api/instagram/search')) {
+        target = `https://${RAPIDAPI_HOST}/search_ig.php`;
+        const params = new URLSearchParams();
+        params.set('search_query', String(body.search || body.query || '').trim());
+        init = {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        };
       } else if (url.startsWith('/api/instagram/mediaByShortcode')) {
         const value = String(body.shortcode || '').trim();
         const mediaUrl = /^https?:\/\//i.test(value)

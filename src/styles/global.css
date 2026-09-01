@@ -15,10 +15,11 @@
   --ig-gradient-purple: #cc2366;
   --ig-gradient-blue: #bc1888;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --radius: 8px;
-  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 18px 40px rgba(16, 24, 40, 0.12);
+  --radius: 10px;
+  --radius-lg: 16px;
   --radius-pill: 22px;
 }
 
@@ -40,7 +41,10 @@ body {
   font-size: 1rem;
   line-height: 1.5;
   color: var(--ig-text);
-  background: var(--ig-bg);
+  background:
+    radial-gradient(1200px 520px at 8% -10%, rgba(240, 148, 51, 0.1), transparent 55%),
+    radial-gradient(900px 480px at 100% 0%, rgba(188, 24, 136, 0.07), transparent 50%),
+    var(--ig-bg);
 }
 
 #root {

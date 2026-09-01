@@ -4,7 +4,7 @@
  */
 
 import { API_BASE_URL, API_ENDPOINTS, getApiHeaders, POSTS_PAGE_SIZE, USE_PROXY } from '@/config/constants';
-import type { InstagramPost, InstagramPostParams, InstagramPostsResponse, MediaByShortcodeParams } from '@/types/instagram.types';
+import type { InstagramPost, InstagramPostParams, InstagramPostsResponse, InstagramUserSuggestion, MediaByShortcodeParams } from '@/types/instagram.types';
 
 function asPostRecord(item: unknown): Record<string, unknown> | null {
   if (!item || typeof item !== 'object') return null;
@@ -73,10 +73,144 @@ function normalizePost(item: Record<string, unknown>): InstagramPost | null {
     videoUrl,
     caption: caption || 'Sem legenda',
     permalink,
+    pinned: isPinnedPost(item),
+    isCarousel: isCarouselPost(item, carousel),
   };
 }
 
-/** Encontra o primeiro array de edges { node } em qualquer nível do objeto (GraphQL-style). */
+function isPinnedPost(item: Record<string, unknown>): boolean {
+  if (item.is_pinned === true || item.pinned === true) return true;
+  const collections = [
+    item.timeline_pinned_user_ids,
+    item.timeline_pin_user_ids,
+    item.clips_tab_pinned_user_ids,
+    item.pinned_for_users,
+    item.pinned_user_ids,
+  ];
+  return collections.some((value) => Array.isArray(value) && value.length > 0);
+}
+
+function isCarouselPost(item: Record<string, unknown>, carousel?: Record<string, unknown>[]): boolean {
+  if (Array.isArray(carousel) && carousel.length > 1) return true;
+  const count = item.carousel_media_count;
+  if (typeof count === 'number' && count > 1) return true;
+  return item.product_type === 'carousel_container' || item.media_type === 8;
+}
+
+function normalizeUser(item: unknown): InstagramUserSuggestion | null {
+  if (!item || typeof item !== 'object') return null;
+  const rec = item as Record<string, unknown>;
+  const user = (rec.user && typeof rec.user === 'object' ? rec.user : rec) as Record<string, unknown>;
+  const username = String(user.username ?? user.user_name ?? '').replace(/^@/, '').trim();
+  if (!username) return null;
+  return {
+    id: String(user.pk ?? user.id ?? user.pk_id ?? username),
+    username,
+    fullName: String(user.full_name ?? user.fullName ?? ''),
+    profilePicUrl: String(
+      user.profile_pic_url ?? user.profile_pic_url_hd ?? user.profilePicUrl ?? user.profile_pic ?? ''
+    ),
+    isVerified: Boolean(user.is_verified ?? user.isVerified ?? user.is_verified_user),
+    isPrivate: Boolean(user.is_private ?? user.isPrivate),
+  };
+}
+
+function extractUsers(data: unknown): InstagramUserSuggestion[] {
+  if (!data) return [];
+  const seen = new Set<string>();
+  const collected: InstagramUserSuggestion[] = [];
+
+  const pushFrom = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    for (const item of value) {
+      const user = normalizeUser(item);
+      if (!user) continue;
+      const key = user.username.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      collected.push(user);
+    }
+  };
+
+  if (Array.isArray(data)) {
+    pushFrom(data);
+    return collected;
+  }
+  if (typeof data !== 'object') return [];
+  const obj = data as Record<string, unknown>;
+  const nested = obj.data && typeof obj.data === 'object' ? (obj.data as Record<string, unknown>) : undefined;
+
+  pushFrom(obj.users);
+  pushFrom(obj.user);
+  pushFrom(obj.accounts);
+  pushFrom(nested?.users);
+  pushFrom(nested?.user);
+
+  if (!collected.length) {
+    const walk = (value: unknown, depth: number) => {
+      if (depth <= 0 || collected.length) return;
+      if (Array.isArray(value) && value[0] && typeof value[0] === 'object') {
+        const first = value[0] as Record<string, unknown>;
+        if ('username' in first || (first.user && typeof first.user === 'object')) {
+          pushFrom(value);
+        }
+        return;
+      }
+      if (value && typeof value === 'object') {
+        for (const child of Object.values(value as Record<string, unknown>)) {
+          walk(child, depth - 1);
+          if (collected.length) return;
+        }
+      }
+    };
+    walk(obj, 5);
+  }
+
+  return collected;
+}
+
+function extractProfile(data: unknown): InstagramUserSuggestion | null {
+  if (!data || typeof data !== 'object') return null;
+  const obj = data as Record<string, unknown>;
+  const fromRoot = normalizeUser(obj.user ?? obj.profile ?? obj.owner);
+  if (fromRoot) return fromRoot;
+  const nested = obj.data && typeof obj.data === 'object' ? (obj.data as Record<string, unknown>) : undefined;
+  const fromData = nested ? normalizeUser(nested.user ?? nested.profile) : null;
+  if (fromData) return fromData;
+
+  const feed = Array.isArray(obj.posts) ? obj.posts : Array.isArray(obj.items) ? obj.items : nested && Array.isArray(nested.posts) ? nested.posts : null;
+  if (feed?.length) {
+    const first = asPostRecord(feed[0]);
+    if (first?.user) return normalizeUser(first.user);
+  }
+  return null;
+}
+
+export function rankUserSuggestions(
+  query: string,
+  users: InstagramUserSuggestion[]
+): InstagramUserSuggestion[] {
+  const q = query.trim().replace(/^@/, '').toLowerCase();
+  if (!q) return users;
+
+  const score = (user: InstagramUserSuggestion): number => {
+    const username = user.username.toLowerCase();
+    const name = user.fullName.toLowerCase();
+    if (username === q) return 0;
+    if (username.startsWith(q)) return 1;
+    if (name.startsWith(q)) return 2;
+    if (username.includes(q)) return 3;
+    if (name.includes(q)) return 4;
+    return 5;
+  };
+
+  return [...users].sort((a, b) => {
+    const diff = score(a) - score(b);
+    if (diff !== 0) return diff;
+    return a.username.localeCompare(b.username);
+  });
+}
+
 function findEdgesArray(value: unknown): { node: Record<string, unknown> }[] | null {
   if (!value || typeof value !== 'object') return null;
   if (Array.isArray(value)) {
@@ -269,7 +403,7 @@ function extractPosts(data: unknown): InstagramPost[] {
   return [];
 }
 
-const POSTS_CACHE_PREFIX = 'ig-posts-cache-v2:';
+const POSTS_CACHE_PREFIX = 'ig-posts-cache-v3:';
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_MAX_STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -398,7 +532,8 @@ async function requestInstagramPosts(
   const data = await response.json();
   const posts = extractPosts(data);
   const nextMaxId = extractNextMaxId(data);
-  const result = { posts, nextMaxId };
+  const profile = extractProfile(data);
+  const result = { posts, nextMaxId, profile };
   writePostsCache(cacheKey, result);
   return result;
 }
@@ -426,6 +561,55 @@ export async function fetchInstagramPosts(
     inflightPosts.delete(cacheKey);
   });
   inflightPosts.set(cacheKey, request);
+  return request;
+}
+
+const SEARCH_CACHE_PREFIX = 'ig-search-cache-v1:';
+const searchInflight = new Map<string, Promise<InstagramUserSuggestion[]>>();
+
+export async function searchInstagramUsers(query: string): Promise<InstagramUserSuggestion[]> {
+  const search = query.trim().replace(/^@/, '');
+  if (!search) return [];
+
+  const cacheKey = `${SEARCH_CACHE_PREFIX}${search.toLowerCase()}`;
+  try {
+    const raw = sessionStorage.getItem(cacheKey);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { savedAt: number; users: InstagramUserSuggestion[] };
+      if (parsed?.users && Date.now() - parsed.savedAt < 10 * 60 * 1000) {
+        return parsed.users;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const existing = searchInflight.get(cacheKey);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.INSTAGRAM_SEARCH}`, {
+      method: 'POST',
+      headers: getApiHeaders(),
+      body: JSON.stringify({ search }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw buildApiError(response.status, payload, 'buscar usuários');
+    }
+    const data = await response.json();
+    const users = extractUsers(data);
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), users }));
+    } catch {
+      // ignore
+    }
+    return users;
+  })().finally(() => {
+    searchInflight.delete(cacheKey);
+  });
+
+  searchInflight.set(cacheKey, request);
   return request;
 }
 

@@ -4,11 +4,28 @@
 
 .toolbar {
   background: var(--ig-bg-white);
-  border: 1px solid var(--ig-border);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 1.35rem 1.5rem 1.45rem;
   margin-bottom: 1.75rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.toolbarCopy {
+  margin-bottom: 1rem;
+}
+
+.toolbarTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.toolbarHint {
+  margin: 0.3rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ig-text-secondary);
 }
 
 .errorBanner {
@@ -26,24 +43,102 @@
   font-size: 0.9375rem;
 }
 
+.profileBar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem 1rem;
+  background: var(--ig-bg-white);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.profileAvatar,
+.profileAvatarFallback {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ig-border-light);
+  flex-shrink: 0;
+}
+
+.profileAvatarFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--ig-text-secondary);
+}
+
+.profileMeta {
+  min-width: 0;
+  flex: 1;
+}
+
+.profileHandle {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.profileName {
+  margin: 0.1rem 0 0;
+  font-size: 0.875rem;
+  color: var(--ig-text-secondary);
+}
+
+.profileCount {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ig-text-secondary);
+  white-space: nowrap;
+}
+
+.pinnedSection,
+.feedSection {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ig-text-secondary);
+}
+
+.sectionCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--ig-bg);
+  color: var(--ig-text);
+  font-size: 0.7rem;
+}
+
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
+  gap: 4px;
 }
 
 @media (max-width: 736px) {
   .list {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 400px) {
-  .list {
-    gap: 2px;
   }
 }
 
@@ -56,7 +151,7 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  padding: 2rem 0 1rem;
+  padding: 1.5rem 0 0.5rem;
 }
 
 .postsCount {
@@ -77,4 +172,5 @@
 .loadMoreWrap .button {
   min-width: 200px;
   gap: 0.5rem;
+  border-radius: 999px;
 }

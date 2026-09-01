@@ -10,9 +10,14 @@ export const API_BASE_URL = '';
 
 export const POSTS_PAGE_SIZE = 12;
 
+export const SEARCH_MIN_CHARS = 2;
+
+export const SEARCH_DEBOUNCE_MS = 500;
+
 export const API_ENDPOINTS = {
   INSTAGRAM_POSTS: '/api/instagram/posts',
   INSTAGRAM_REELS: '/api/instagram/reels',
+  INSTAGRAM_SEARCH: '/api/instagram/search',
   MEDIA_BY_SHORTCODE: '/api/instagram/mediaByShortcode',
   NEWS: '/api/news',
 } as const;

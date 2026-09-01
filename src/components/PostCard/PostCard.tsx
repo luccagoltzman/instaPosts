@@ -25,7 +25,7 @@ export function PostCard({ post, onPreview, onDownloadClick, className = '', ...
 
   return (
     <article
-      className={`${styles.card} ${className}`.trim()}
+      className={`${styles.card} ${post.pinned ? styles.cardPinned : ''} ${className}`.trim()}
       onClick={onPreview ? handleCardClick : undefined}
       role={onPreview ? 'button' : undefined}
       tabIndex={onPreview ? 0 : undefined}
@@ -43,8 +43,22 @@ export function PostCard({ post, onPreview, onDownloadClick, className = '', ...
         )}
         {isVideo && (
           <span className={styles.videoIcon} aria-hidden>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="32" height="32">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
               <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        )}
+        {post.pinned && (
+          <span className={styles.pinBadge} title="Publicação fixada" aria-label="Publicação fixada">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
+              <path d="M16 9V4h1V2H7v2h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+            </svg>
+          </span>
+        )}
+        {post.isCarousel && (
+          <span className={styles.carouselBadge} aria-hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M4 6h12v12H4zM8 4h12v12h-2V6H8z" />
             </svg>
           </span>
         )}
