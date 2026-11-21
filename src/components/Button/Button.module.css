@@ -22,20 +22,20 @@
 
 .primary {
   background: var(--ig-link);
-  color: var(--ig-bg-white);
+  color: #fff;
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--ig-link-hover);
+  background: var(--ig-link-strong);
 }
 
 .secondary {
-  background: var(--ig-border);
+  background: var(--ig-border-light);
   color: var(--ig-text);
 }
 
 .secondary:hover:not(:disabled) {
-  background: var(--ig-border-light);
+  background: var(--ig-border);
   color: var(--ig-text);
 }
 

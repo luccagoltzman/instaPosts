@@ -1,6 +1,6 @@
 .header {
-  background: rgba(255, 255, 255, 0.86);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
   z-index: 30;
@@ -11,9 +11,10 @@
 .inner {
   max-width: 980px;
   margin: 0 auto;
-  padding: 0.95rem 1.25rem;
+  height: var(--header-height);
+  padding: 0 1.25rem;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
@@ -54,9 +55,7 @@
 }
 
 @media (max-width: 640px) {
-  .inner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.2rem;
+  .tagline {
+    display: none;
   }
 }

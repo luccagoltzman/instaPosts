@@ -1,10 +1,12 @@
 /**
- * Serviço de comunicação com a Instagram Scraper Stable API (RapidAPI).
- * POST form-urlencoded em /get_ig_user_posts.php
+ * Serviço do frontend: fala só com as rotas do nosso servidor (/api/instagram/*).
+ *  - posts:  perfil e publicações (Instagram direto ou API da Meta, grátis)
+ *  - search: sugestões de perfil
+ *  - link:   post/reel/story pelo link (RapidAPI "Download All in One!")
  */
 
-import { API_BASE_URL, API_ENDPOINTS, getApiHeaders, POSTS_PAGE_SIZE, USE_PROXY } from '@/config/constants';
-import type { InstagramPost, InstagramPostParams, InstagramPostsResponse, InstagramUserSuggestion, MediaByShortcodeParams } from '@/types/instagram.types';
+import { API_BASE_URL, API_ENDPOINTS, getApiHeaders, POSTS_PAGE_SIZE, SEARCH_MIN_CHARS, USE_PROXY } from '@/config/constants';
+import type { InstagramPost, InstagramPostParams, MediaItem, InstagramPostsResponse, InstagramUserSuggestion, MediaByLinkParams } from '@/types/instagram.types';
 
 function asPostRecord(item: unknown): Record<string, unknown> | null {
   if (!item || typeof item !== 'object') return null;
@@ -28,6 +30,31 @@ function getFirstImageUrl(item: Record<string, unknown>): string {
   return '';
 }
 
+function getVideoUrl(item: Record<string, unknown>): string | undefined {
+  if (typeof item.video_url === 'string' && item.video_url) return item.video_url;
+  const versions = item.video_versions as { url?: string }[] | undefined;
+  if (Array.isArray(versions) && versions[0]?.url) return versions[0].url;
+  return undefined;
+}
+
+function toMediaItem(item: Record<string, unknown>): MediaItem | null {
+  const imageUrl = getFirstImageUrl(item);
+  const videoUrl = getVideoUrl(item);
+  if (!imageUrl && !videoUrl) return null;
+  return { imageUrl, ...(videoUrl ? { videoUrl } : {}) };
+}
+
+/** Lista todas as mídias do post: carrossel (formato v1 ou GraphQL) ou a mídia única. */
+function getMediaItems(item: Record<string, unknown>): MediaItem[] {
+  const carousel = item.carousel_media as Record<string, unknown>[] | undefined;
+  const sidecar = (item.edge_sidecar_to_children as { edges?: { node?: Record<string, unknown> }[] } | undefined)?.edges
+    ?.map((edge) => edge?.node)
+    .filter((node): node is Record<string, unknown> => Boolean(node));
+  const children = Array.isArray(carousel) && carousel.length ? carousel : sidecar?.length ? sidecar : null;
+  const items = children ? children.map(toMediaItem) : [toMediaItem(item)];
+  return items.filter((media): media is MediaItem => media !== null);
+}
+
 function normalizePost(item: Record<string, unknown>): InstagramPost | null {
   const carousel = item.carousel_media as Record<string, unknown>[] | undefined;
   const firstMedia = Array.isArray(carousel) ? carousel[0] : undefined;
@@ -37,7 +64,12 @@ function normalizePost(item: Record<string, unknown>): InstagramPost | null {
   const mediaUrl = getFirstImageUrl(item);
   if (!id && !mediaUrl) return null;
 
-  const code = typeof item.code === 'string' ? item.code : (firstMedia as Record<string, unknown> | undefined)?.code;
+  const code =
+    typeof item.code === 'string'
+      ? item.code
+      : typeof item.shortcode === 'string'
+        ? item.shortcode
+        : (firstMedia as Record<string, unknown> | undefined)?.code;
   const permalink =
     typeof item.permalink === 'string'
       ? item.permalink
@@ -67,10 +99,15 @@ function normalizePost(item: Record<string, unknown>): InstagramPost | null {
     caption = edges?.[0]?.node?.text ?? '';
   }
 
+  const media = getMediaItems(item);
+  if (!media.length && mediaUrl) media.push({ imageUrl: mediaUrl, ...(videoUrl ? { videoUrl } : {}) });
+
   return {
     id: id || `post-${mediaUrl.slice(-12)}`,
+    code: typeof code === 'string' ? code : undefined,
     mediaUrl: mediaUrl || permalink,
-    videoUrl,
+    videoUrl: media[0]?.videoUrl ?? videoUrl,
+    media,
     caption: caption || 'Sem legenda',
     permalink,
     pinned: isPinnedPost(item),
@@ -92,6 +129,7 @@ function isPinnedPost(item: Record<string, unknown>): boolean {
 
 function isCarouselPost(item: Record<string, unknown>, carousel?: Record<string, unknown>[]): boolean {
   if (Array.isArray(carousel) && carousel.length > 1) return true;
+  if (item.__typename === 'GraphSidecar') return true;
   const count = item.carousel_media_count;
   if (typeof count === 'number' && count > 1) return true;
   return item.product_type === 'carousel_container' || item.media_type === 8;
@@ -112,7 +150,15 @@ function normalizeUser(item: unknown): InstagramUserSuggestion | null {
     ),
     isVerified: Boolean(user.is_verified ?? user.isVerified ?? user.is_verified_user),
     isPrivate: Boolean(user.is_private ?? user.isPrivate),
+    postCount: toCount(
+      user.media_count ?? (user.edge_owner_to_timeline_media as { count?: unknown } | undefined)?.count
+    ),
   };
+}
+
+function toCount(value: unknown): number | undefined {
+  const n = typeof value === 'string' ? Number(value) : value;
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
 function extractUsers(data: unknown): InstagramUserSuggestion[] {
@@ -297,7 +343,7 @@ function findCursorInObject(obj: Record<string, unknown>, depth: number): string
   return null;
 }
 
-/** Extrai cursor da próxima página (pagination_token da Instagram Scraper Stable API). */
+/** Extrai o token da próxima página ("Ver mais"). */
 function extractNextMaxId(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;
   const obj = data as Record<string, unknown>;
@@ -403,7 +449,7 @@ function extractPosts(data: unknown): InstagramPost[] {
   return [];
 }
 
-const POSTS_CACHE_PREFIX = 'ig-posts-cache-v3:';
+const POSTS_CACHE_PREFIX = 'ig-posts-cache-v4:';
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const CACHE_MAX_STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -466,14 +512,18 @@ export function isRateLimitError(error: unknown): boolean {
 
 function buildApiError(status: number, payload: unknown, action: string): Error {
   const raw = payloadMessage(payload);
+  // O servidor já explica o que houve em cada fonte (Instagram, Meta, RapidAPI).
+  if (payload && typeof payload === 'object' && (payload as Record<string, unknown>).sourcesFailed && raw) {
+    return new Error(raw);
+  }
   if (isRateLimitPayload(status, payload)) {
     return new Error(
-      'A API do Instagram atingiu o limite de requisições da RapidAPI (HTTP 429). Espere alguns minutos e confira a cota no dashboard da RapidAPI. Tentar de novo agora consome mais cota e pode prolongar o bloqueio.'
+      'Limite de requisições atingido (HTTP 429). Espere alguns minutos antes de tentar de novo: insistir pode prolongar o bloqueio.'
     );
   }
   if (status === 404) {
     return new Error(
-      'A RapidAPI não encontrou o endpoint da Instagram Scraper Stable API (HTTP 404). Verifique o host e a inscrição da API.'
+      'Perfil não encontrado (HTTP 404). Confira o @ digitado.'
     );
   }
   return new Error(raw || `Erro ao ${action}: ${status}`);
@@ -565,24 +615,46 @@ export async function fetchInstagramPosts(
 }
 
 const SEARCH_CACHE_PREFIX = 'ig-search-cache-v1:';
+const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
+/** Mínimo de resultados de um prefixo já buscado para dispensar uma nova requisição. */
+const SEARCH_PREFIX_MIN_MATCHES = 3;
 const searchInflight = new Map<string, Promise<InstagramUserSuggestion[]>>();
+
+function readSearchCache(cacheKey: string): InstagramUserSuggestion[] | null {
+  try {
+    const raw = sessionStorage.getItem(cacheKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt: number; users: InstagramUserSuggestion[] };
+    if (parsed?.users && Date.now() - parsed.savedAt < SEARCH_CACHE_TTL_MS) {
+      return parsed.users;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/** Reaproveita a busca de um prefixo ("neym" serve para "neymar") quando ainda há resultados suficientes. */
+function searchFromCachedPrefix(search: string): InstagramUserSuggestion[] | null {
+  const q = search.toLowerCase();
+  for (let len = q.length - 1; len >= SEARCH_MIN_CHARS; len--) {
+    const users = readSearchCache(`${SEARCH_CACHE_PREFIX}${q.slice(0, len)}`);
+    if (!users) continue;
+    const matches = users.filter(
+      (user) => user.username.toLowerCase().includes(q) || user.fullName.toLowerCase().includes(q)
+    );
+    return matches.length >= SEARCH_PREFIX_MIN_MATCHES ? matches : null;
+  }
+  return null;
+}
 
 export async function searchInstagramUsers(query: string): Promise<InstagramUserSuggestion[]> {
   const search = query.trim().replace(/^@/, '');
   if (!search) return [];
 
   const cacheKey = `${SEARCH_CACHE_PREFIX}${search.toLowerCase()}`;
-  try {
-    const raw = sessionStorage.getItem(cacheKey);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { savedAt: number; users: InstagramUserSuggestion[] };
-      if (parsed?.users && Date.now() - parsed.savedAt < 10 * 60 * 1000) {
-        return parsed.users;
-      }
-    }
-  } catch {
-    // ignore
-  }
+  const cached = readSearchCache(cacheKey) ?? searchFromCachedPrefix(search);
+  if (cached) return cached;
 
   const existing = searchInflight.get(cacheKey);
   if (existing) return existing;
@@ -613,62 +685,34 @@ export async function searchInstagramUsers(query: string): Promise<InstagramUser
   return request;
 }
 
+/** Link de post, reel, tv ou story do Instagram (não de perfil). */
+export function isInstagramMediaLink(value: string): boolean {
+  try {
+    const u = new URL(value.trim());
+    const host = u.hostname.toLowerCase();
+    const isInstagram = host === 'instagram.com' || host.endsWith('.instagram.com') || host === 'instagr.am';
+    return isInstagram && /\/(p|reel|reels|tv|stories)\//i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Busca um único post/mídia pelo shortcode (ex.: DPRcWdvgI4P).
- * Em produção: POST /api/instagram/mediaByShortcode.
- * Em desenvolvimento: GET /get_media_data.php.
+ * Busca um post, reel ou story pelo link, usando a API "Download All in One!" (RapidAPI).
+ * Consome cota (2 créditos por post, 5 por story; falhas não são cobradas).
  */
-export async function fetchMediaByShortcode(
-  params: MediaByShortcodeParams
-): Promise<InstagramPost | null> {
-  if (!USE_PROXY && !getApiHeaders()['x-rapidapi-key']) {
-    throw new Error('Configure VITE_RAPIDAPI_KEY no arquivo .env');
-  }
-
-  const shortcode = params.shortcode?.trim();
-  if (!shortcode) return null;
-
-  const isUrl = /^https?:\/\//i.test(shortcode);
-  const isReel = /reel/i.test(shortcode);
-  const code = shortcode.replace(/^\/?(p|reel)\//i, '').replace(/\/$/, '');
-  const mediaUrl = isUrl
-    ? shortcode
-    : isReel
-      ? `https://www.instagram.com/reel/${code}/`
-      : `https://www.instagram.com/p/${code}/`;
-  const type = /\/reel\//i.test(mediaUrl) ? 'reel' : 'post';
-
-  let response: Response;
-  if (USE_PROXY) {
-    response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.MEDIA_BY_SHORTCODE}`, {
-      method: 'POST',
-      headers: getApiHeaders(),
-      body: JSON.stringify({ shortcode: mediaUrl }),
-    });
-  } else {
-    const url = new URL(`${API_BASE_URL}${API_ENDPOINTS.MEDIA_BY_SHORTCODE}`);
-    url.searchParams.set('reel_post_code_or_url', mediaUrl);
-    url.searchParams.set('type', type);
-    const headers = getApiHeaders();
-    delete headers['Content-Type'];
-    response = await fetch(url.toString(), {
-      method: 'GET',
-      headers,
-    });
-  }
-
+export async function fetchMediaByLink(params: MediaByLinkParams): Promise<InstagramPost> {
+  const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.MEDIA_BY_LINK}`, {
+    method: 'POST',
+    headers: getApiHeaders(),
+    body: JSON.stringify({ url: params.url.trim() }),
+  });
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw buildApiError(response.status, payload, 'carregar mídia');
+    throw new Error(payloadMessage(data) || `Erro ao buscar o link (HTTP ${response.status}).`);
   }
-
-  const contentType = response.headers.get('content-type') ?? '';
-  if (!contentType.includes('application/json')) {
-    throw new Error('Resposta da API não é JSON.');
-  }
-
-  const data = await response.json();
-  const obj = data && typeof data === 'object' ? data as Record<string, unknown> : {};
-  const item = (obj.data ?? obj.media ?? obj.item ?? obj) as Record<string, unknown>;
-  return normalizePost(item);
+  const item = Array.isArray((data as { items?: unknown[] }).items) ? (data as { items: unknown[] }).items[0] : null;
+  const post = item && typeof item === 'object' ? normalizePost(item as Record<string, unknown>) : null;
+  if (!post) throw new Error('A API não retornou mídia para este link.');
+  return post;
 }

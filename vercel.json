@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/proxy-media.js": {
+      "maxDuration": 60
+    }
+  }
+}

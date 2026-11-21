@@ -1,5 +1,7 @@
-/* Reset e variáveis — visual inspirado no Instagram */
+/* Reset e variáveis — visual inspirado no Instagram (claro e escuro) */
 :root {
+  color-scheme: light dark;
+  --header-height: 64px;
   --ig-bg: #fafafa;
   --ig-bg-white: #ffffff;
   --ig-border: #dbdbdb;
@@ -8,7 +10,18 @@
   --ig-text-secondary: #8e8e8e;
   --ig-link: #0095f6;
   --ig-link-hover: #00376b;
+  --ig-link-strong: #1877f2;
   --ig-error: #ed4956;
+  --ig-success: #2e9e5b;
+  --line: rgba(0, 0, 0, 0.06);
+  --mark: rgba(0, 149, 246, 0.16);
+  --header-bg: rgba(255, 255, 255, 0.86);
+  --skeleton: #efefef;
+  --skeleton-shine: #f7f7f7;
+  --toast-bg: #262626;
+  --toast-text: #ffffff;
+  --page-glow-a: rgba(240, 148, 51, 0.1);
+  --page-glow-b: rgba(188, 24, 136, 0.07);
   --ig-gradient-start: #f09433;
   --ig-gradient-mid: #e6683c;
   --ig-gradient-end: #dc2743;
@@ -21,6 +34,32 @@
   --radius: 10px;
   --radius-lg: 16px;
   --radius-pill: 22px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ig-bg: #0c0c0d;
+    --ig-bg-white: #18181a;
+    --ig-border: #34343a;
+    --ig-border-light: #26262b;
+    --ig-text: #f2f2f3;
+    --ig-text-secondary: #a1a1aa;
+    --ig-link: #3aa3ff;
+    --ig-link-hover: #7cc2ff;
+    --ig-link-strong: #1d8fff;
+    --line: rgba(255, 255, 255, 0.07);
+    --mark: rgba(58, 163, 255, 0.25);
+    --header-bg: rgba(12, 12, 13, 0.82);
+    --skeleton: #1f1f23;
+    --skeleton-shine: #2a2a2f;
+    --toast-bg: #f2f2f3;
+    --toast-text: #111113;
+    --page-glow-a: rgba(240, 148, 51, 0.06);
+    --page-glow-b: rgba(188, 24, 136, 0.06);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.55);
+  }
 }
 
 *,
@@ -42,8 +81,8 @@ body {
   line-height: 1.5;
   color: var(--ig-text);
   background:
-    radial-gradient(1200px 520px at 8% -10%, rgba(240, 148, 51, 0.1), transparent 55%),
-    radial-gradient(900px 480px at 100% 0%, rgba(188, 24, 136, 0.07), transparent 50%),
+    radial-gradient(1200px 520px at 8% -10%, var(--page-glow-a), transparent 55%),
+    radial-gradient(900px 480px at 100% 0%, var(--page-glow-b), transparent 50%),
     var(--ig-bg);
 }
 

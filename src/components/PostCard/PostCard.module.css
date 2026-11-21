@@ -1,121 +1,211 @@
-/* Card no formato do grid do Instagram (perfil): só quadrado + overlay no hover */
+/* Card do grid: miniatura quadrada, selos no topo e download sempre visível */
 .card {
   position: relative;
-  display: block;
   aspect-ratio: 1;
-  background: var(--ig-border-light);
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 6px;
+  background: var(--skeleton);
+  isolation: isolate;
 }
 
-.card[role="button"] {
-  cursor: pointer;
-}
-
-.media {
-  position: relative;
+.hit {
+  display: block;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
 }
 
-.thumbnail {
+.hit:focus-visible {
+  outline: 3px solid var(--ig-link);
+  outline-offset: -3px;
+}
+
+.thumbnail,
+.thumbnailFallback {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
-  vertical-align: middle;
+  transition: transform 0.35s ease;
 }
 
-.videoIcon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--ig-bg-white);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
-  z-index: 1;
-  pointer-events: none;
+.card:hover .thumbnail {
+  transform: scale(1.03);
 }
 
-.overlay {
+/* Escurece levemente topo e base para os selos e o botão ficarem legíveis */
+.shade {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 28%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent 30%);
+  pointer-events: none;
+}
+
+.badges {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  gap: 0.3rem;
+  pointer-events: none;
 }
 
-.card:hover .overlay {
-  opacity: 1;
-}
-
-.actionBtn {
+.badge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.85rem;
-  font-family: inherit;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--ig-bg-white);
-  background: transparent;
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  text-decoration: none;
-  transition: transform 0.1s, opacity 0.15s;
-}
-
-.actionBtn:hover {
-  transform: scale(1.05);
-  opacity: 1;
-}
-
-.actionBtn:active {
-  transform: scale(0.98);
-}
-
-.actionBtn:focus-visible {
-  outline: 2px solid var(--ig-bg-white);
-  outline-offset: 2px;
-}
-
-.actionBtn svg {
-  flex-shrink: 0;
-}
-
-.pinBadge,
-.carouselBadge {
-  position: absolute;
-  z-index: 2;
+  gap: 0.25rem;
+  height: 24px;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: #fff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .pinBadge {
-  top: 0.55rem;
-  left: 0.55rem;
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
   width: 26px;
   height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 999px;
+  pointer-events: none;
 }
 
-.carouselBadge {
-  top: 0.55rem;
-  right: 0.55rem;
+.downloadBtn {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.15s, transform 0.1s;
 }
 
-.cardPinned {
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04), 0 8px 20px rgba(0, 0, 0, 0.08);
+.downloadBtn:hover:not(:disabled) {
+  background: var(--ig-link);
+  border-color: transparent;
+}
+
+.downloadBtn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.downloadBtn:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.downloadBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Seleção em lote */
+.check {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.checkOn {
+  background: var(--ig-link);
+  border-color: var(--ig-link);
+}
+
+.selected .hit {
+  outline: 3px solid var(--ig-link);
+  outline-offset: -3px;
+}
+
+.selected .thumbnail {
+  transform: scale(0.94);
+  border-radius: 4px;
+}
+
+.pinned {
+  box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* Grid de 3 colunas no celular: selos só com ícone, botões menores */
+@media (max-width: 640px) {
+  .badgeText {
+    display: none;
+  }
+
+  .badge {
+    height: 22px;
+    padding: 0 0.4rem;
+  }
+
+  .downloadBtn {
+    width: 32px;
+    height: 32px;
+    right: 0.35rem;
+    bottom: 0.35rem;
+  }
+
+  .downloadBtn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .badges {
+    top: 0.35rem;
+    right: 0.35rem;
+  }
+
+  .check,
+  .pinBadge {
+    top: 0.35rem;
+    left: 0.35rem;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thumbnail,
+  .downloadBtn {
+    transition: none;
+  }
+
+  .card:hover .thumbnail {
+    transform: none;
+  }
 }

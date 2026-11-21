@@ -11,7 +11,11 @@
   margin: 0 0 1rem;
   font-size: 0.9375rem;
   color: var(--ig-error);
-  line-height: 1.5;
+  line-height: 1.6;
+  white-space: pre-line;
+  display: inline-block;
+  text-align: left;
+  max-width: 40rem;
 }
 
 .message:last-child {
