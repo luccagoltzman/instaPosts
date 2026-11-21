@@ -43,7 +43,7 @@
 }
 
 .input:hover {
-  border-color: #c7c7c7;
+  border-color: var(--ig-text-secondary);
 }
 
 .input:focus {
@@ -144,7 +144,7 @@
 }
 
 .mark {
-  background: rgba(0, 149, 246, 0.16);
+  background: var(--mark);
   color: inherit;
   padding: 0 0.05em;
   border-radius: 2px;

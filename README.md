@@ -1,6 +1,6 @@
 # Instagram Posts
 
-Frontend em React + TypeScript para buscar e exibir posts (fotos e vídeos) do Instagram por usuário, usando a [Instagram Scraper Stable API](https://rapidapi.com/thetechguy32744/api/instagram-scraper-stable-api) da RapidAPI.
+Frontend em React + TypeScript para buscar e exibir posts (fotos e vídeos) do Instagram por usuário, e para baixar qualquer post, reel ou story pelo link.
 
 ## Estrutura do projeto
 
@@ -31,33 +31,55 @@ src/
 └── main.tsx
 ```
 
-## Configuração da API (RapidAPI)
+## De onde vêm os dados
 
-A aplicação usa a **Instagram Scraper Stable API** na RapidAPI (`POST /get_ig_user_posts.php`).
+Toda a lógica de servidor fica em `api/_lib/instagram.js`, usada pelas funções da Vercel (`/api/instagram/posts`, `/search`, `/link`) e pelo proxy do Vite em dev. O campo de busca aceita `@perfil` ou o link de um post.
 
-### Desenvolvimento local
+**Perfil (`@nike`)**, sempre grátis:
 
-1. Crie um arquivo `.env` na raiz do projeto.
-2. Adicione sua chave da RapidAPI:
+1. **Instagram direto** (endpoint público do site, `web_profile_info`): só a 1ª página (12 posts). O Instagram bloqueia por IP quando há muitas requisições (HTTP 429), e o app pausa essa fonte por 10 min quando isso acontece. Costuma ser bloqueado em IPs de datacenter, como os da Vercel.
+2. **Graph API da Meta (Business Discovery)**: oficial, com paginação ("Ver mais"). Só atende perfis **profissionais** (Empresa/Criador). Ativa apenas se `IG_GRAPH_TOKEN` e `IG_GRAPH_USER_ID` estiverem configurados. Sem ela, o botão "Ver mais" não aparece.
+
+**Link (`instagram.com/p/…`, `/reel/…`, `/stories/…`)**: API [Download All in One!](https://rapidapi.com/coder2077/api/instagram-downloader-download-instagram-videos-stories1) da RapidAPI (`GET /fetch?url=`). O plano Basic é grátis: 500 créditos/mês, 2 por post ou reel, 5 por story, e chamadas que falham não são cobradas.
+
+**Sugestões de perfil** usam o endpoint público de busca do Instagram, que costuma exigir login; quando ele recusa, o campo só não mostra sugestões (Enter abre o @ digitado).
+
+Detalhes:
+
+- Respostas ficam em cache na memória do servidor (perfis 10 min, links 30 min, porque os links de download expiram em algumas horas).
+- **De onde veio cada resposta:** o terminal do `npm run dev` (e os logs da Vercel) mostram linhas como `[instagram] posts @nike → graph` ou `link … → rapidapi (falhou (HTTP 403))`. Quando um perfil não carrega, a mensagem de erro no app lista o motivo de cada fonte.
+
+## Configurar a Graph API da Meta (gratuita)
+
+Você precisa de uma conta **sua** do Instagram do tipo profissional. Ela é só quem faz as consultas e pode ser uma conta secundária.
+
+1. **Conta profissional:** no app do Instagram, *Configurações → Tipo de conta e ferramentas → Mudar para conta profissional* (Criador de conteúdo ou Empresa).
+2. **Página do Facebook:** crie uma Página e vincule a conta do Instagram a ela (nas configurações da Página, em *Contas vinculadas*, ou pela Central de Contas).
+3. **App da Meta:** em [developers.facebook.com](https://developers.facebook.com) → *Meus apps → Criar app*, escolha o caso de uso de Instagram com login do Facebook (API do Instagram com Login do Facebook). O app pode ficar em **modo de desenvolvimento**: como só você usa o token, não é preciso enviar para revisão.
+4. **Token:** no [Graph API Explorer](https://developers.facebook.com/tools/explorer/), selecione o app, clique em *Generate Access Token* e conceda as permissões `instagram_basic`, `pages_show_list`, `pages_read_engagement` e `business_management`.
+5. **ID da sua conta do Instagram:** no próprio Explorer, rode `GET me/accounts` para pegar o ID da Página e depois `GET <ID_DA_PAGINA>?fields=instagram_business_account`. O `id` retornado é o `IG_GRAPH_USER_ID`.
+6. **Token de longa duração:** o token do Explorer expira em cerca de 1 hora. Troque-o por um de ~60 dias acessando
+   `https://graph.facebook.com/v26.0/oauth/access_token?grant_type=fb_exchange_token&client_id=<APP_ID>&client_secret=<APP_SECRET>&fb_exchange_token=<TOKEN_CURTO>`
+   (App ID e App Secret ficam em *Configurações do app → Básico*). O `access_token` da resposta é o `IG_GRAPH_TOKEN`.
+7. **Configure** no `.env` (dev) e nas Environment Variables da Vercel (produção):
 
 ```
-VITE_RAPIDAPI_KEY=sua_chave_aqui
+IG_GRAPH_TOKEN=seu_token_de_longa_duracao
+IG_GRAPH_USER_ID=17841400000000000
 ```
 
-Opcional: para outro host, defina `VITE_RAPIDAPI_HOST`. O padrão é `instagram-scraper-stable-api.p.rapidapi.com`.
+8. **Teste:** rode `npm run dev`, abra um perfil de marca (ex.: `nike`) e confira no terminal a linha `→ graph`.
 
-Em desenvolvimento o Vite encaminha `/api/instagram/*` para a RapidAPI, então a chave não vai para o navegador.
+Quando o token expirar, o terminal mostra `graph (falhou (token inválido ou expirado))` e o app volta a usar a RapidAPI até você gerar um novo (passos 4 e 6).
 
-### Produção (Vercel) — uso seguro da chave
+## Configuração da RapidAPI (download por link)
 
-Em produção o frontend **não** envia a chave ao navegador. As requisições passam por um **proxy** (funções serverless em `/api/instagram/*`), e a chave fica só no servidor.
+1. Na página da [Download All in One!](https://rapidapi.com/coder2077/api/instagram-downloader-download-instagram-videos-stories1), clique em **Subscribe / Alterar plano** e assine o plano **Basic** (grátis).
+2. Copie a chave (`X-RapidAPI-Key`) do playground.
+3. **Dev:** no `.env`, `VITE_RAPIDAPI_KEY=sua_chave` (a chave fica só no servidor do Vite, não vai para o navegador).
+4. **Produção (Vercel):** *Settings → Environment Variables*, crie `RAPIDAPI_KEY` com a mesma chave e faça um novo deploy.
 
-1. No [Dashboard da Vercel](https://vercel.com) → seu projeto → **Settings** → **Environment Variables**.
-2. Crie a variável **`RAPIDAPI_KEY`** (nome exato) com o valor da sua chave da RapidAPI.
-3. Marque o ambiente **Production** (e opcionalmente Preview).
-4. Faça um novo deploy.
-
-Assim a chave nunca é exposta no cliente e a comunicação com a API em produção funciona de forma segura.
+Se o app mostrar "Sua chave não está inscrita na API…", a chave do `.env` não tem a assinatura do passo 1 (confira se é a mesma conta/aplicativo da RapidAPI).
 
 ## Scripts
 

@@ -2,8 +2,8 @@ import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-
-const RAPIDAPI_HOST = 'instagram-scraper-stable-api.p.rapidapi.com';
+import { OPERATIONS, configFromEnv, type ServerConfig } from './api/_lib/instagram.js';
+import { streamMedia } from './api/_lib/media.js';
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -14,9 +14,16 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function instagramDevProxy(apiKey: string): Plugin {
+function instagramDevProxy(config: ServerConfig): Plugin {
   const handle = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const url = req.url ?? '';
+
+    if (url.startsWith('/api/proxy-media') && req.method === 'GET') {
+      const target = new URL(url, 'http://localhost').searchParams.get('url');
+      await streamMedia(target, req.headers.range, res);
+      return;
+    }
+
     if (!url.startsWith('/api/instagram/')) {
       next();
       return;
@@ -35,10 +42,10 @@ function instagramDevProxy(apiKey: string): Plugin {
       return;
     }
 
-    if (!apiKey) {
-      res.statusCode = 500;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Configure VITE_RAPIDAPI_KEY ou RAPIDAPI_KEY no arquivo .env' }));
+    const name = url.slice('/api/instagram/'.length).split(/[/?#]/)[0];
+    const operation = Object.prototype.hasOwnProperty.call(OPERATIONS, name) ? OPERATIONS[name as keyof typeof OPERATIONS] : null;
+    if (!operation) {
+      next();
       return;
     }
 
@@ -51,67 +58,11 @@ function instagramDevProxy(apiKey: string): Plugin {
         body = {};
       }
 
-      const headers: Record<string, string> = {
-        'x-rapidapi-host': RAPIDAPI_HOST,
-        'x-rapidapi-key': apiKey,
-      };
-
-      let target = '';
-      let init: RequestInit;
-
-      if (url.startsWith('/api/instagram/posts')) {
-        target = `https://${RAPIDAPI_HOST}/get_ig_user_posts.php`;
-        const params = new URLSearchParams();
-        params.set('username_or_url', String(body.username || ''));
-        params.set('amount', String(body.amount || 12));
-        params.set('pagination_token', String(body.maxId || body.pagination_token || ''));
-        init = {
-          method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-        };
-      } else if (url.startsWith('/api/instagram/reels')) {
-        target = `https://${RAPIDAPI_HOST}/get_ig_user_reels.php`;
-        const params = new URLSearchParams();
-        params.set('username_or_url', String(body.username || ''));
-        params.set('pagination_token', String(body.maxId || body.pagination_token || ''));
-        init = {
-          method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-        };
-      } else if (url.startsWith('/api/instagram/search')) {
-        target = `https://${RAPIDAPI_HOST}/search_ig.php`;
-        const params = new URLSearchParams();
-        params.set('search_query', String(body.search || body.query || '').trim());
-        init = {
-          method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-        };
-      } else if (url.startsWith('/api/instagram/mediaByShortcode')) {
-        const value = String(body.shortcode || '').trim();
-        const mediaUrl = /^https?:\/\//i.test(value)
-          ? value
-          : /reel/i.test(value)
-            ? `https://www.instagram.com/reel/${value.replace(/^\/?(p|reel)\//i, '').replace(/\/$/, '')}/`
-            : `https://www.instagram.com/p/${value.replace(/^\/?(p|reel)\//i, '').replace(/\/$/, '')}/`;
-        const type = /\/reel\//i.test(mediaUrl) ? 'reel' : 'post';
-        const dest = new URL(`https://${RAPIDAPI_HOST}/get_media_data.php`);
-        dest.searchParams.set('reel_post_code_or_url', mediaUrl);
-        dest.searchParams.set('type', type);
-        target = dest.toString();
-        init = { method: 'GET', headers };
-      } else {
-        next();
-        return;
-      }
-
-      const response = await fetch(target, init);
-      const data = await response.text();
-      res.statusCode = response.status;
-      res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-      res.end(data);
+      const result = await operation(config, body);
+      res.statusCode = result.status;
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('X-Data-Source', String(result.body?.source ?? 'unknown'));
+      res.end(JSON.stringify(result.body));
     } catch {
       res.statusCode = 502;
       res.setHeader('Content-Type', 'application/json');
@@ -119,10 +70,10 @@ function instagramDevProxy(apiKey: string): Plugin {
     }
   };
 
-  const attach = (server: ViteDevServer) => {
-    return () => {
-      server.middlewares.use(handle);
-    };
+  // Registra antes dos middlewares internos do Vite: senão o fallback de SPA responde
+  // GET /api/proxy-media com o index.html.
+  const attach = (server: Pick<ViteDevServer, 'middlewares'>) => {
+    server.middlewares.use(handle);
   };
 
   return {
@@ -134,10 +85,9 @@ function instagramDevProxy(apiKey: string): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiKey = env.RAPIDAPI_KEY || env.VITE_RAPIDAPI_KEY || '';
 
   return {
-    plugins: [react(), instagramDevProxy(apiKey)],
+    plugins: [react(), instagramDevProxy(configFromEnv(env))],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

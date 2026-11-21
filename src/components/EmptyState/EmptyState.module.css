@@ -2,7 +2,7 @@
   padding: 3.25rem 1.5rem;
   text-align: center;
   background: var(--ig-bg-white);
-  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border: 1px dashed var(--ig-border);
   border-radius: 20px;
 }
 

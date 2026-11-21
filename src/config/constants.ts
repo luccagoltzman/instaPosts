@@ -10,15 +10,16 @@ export const API_BASE_URL = '';
 
 export const POSTS_PAGE_SIZE = 12;
 
-export const SEARCH_MIN_CHARS = 2;
+/** Cada busca de sugestões pode gastar cota da RapidAPI: só a partir de 3 letras. */
+export const SEARCH_MIN_CHARS = 3;
 
-export const SEARCH_DEBOUNCE_MS = 500;
+/** Espera o usuário parar de digitar antes de buscar sugestões. */
+export const SEARCH_DEBOUNCE_MS = 900;
 
 export const API_ENDPOINTS = {
   INSTAGRAM_POSTS: '/api/instagram/posts',
-  INSTAGRAM_REELS: '/api/instagram/reels',
   INSTAGRAM_SEARCH: '/api/instagram/search',
-  MEDIA_BY_SHORTCODE: '/api/instagram/mediaByShortcode',
+  MEDIA_BY_LINK: '/api/instagram/link',
   NEWS: '/api/news',
 } as const;
 

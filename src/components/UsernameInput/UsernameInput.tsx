@@ -3,9 +3,10 @@ import type { FormHTMLAttributes, KeyboardEvent } from 'react';
 import type { InstagramUserSuggestion } from '@/types/instagram.types';
 import { Button } from '@/components/Button/Button';
 import { getProxiedMediaUrl } from '@/utils/proxyMedia';
+import { SEARCH_MIN_CHARS } from '@/config/constants';
 import styles from './UsernameInput.module.css';
 
-export interface UsernameInputProps extends FormHTMLAttributes<HTMLFormElement> {
+export interface UsernameInputProps extends Omit<FormHTMLAttributes<HTMLFormElement>, 'onSubmit'> {
   value: string;
   onUsernameChange: (value: string) => void;
   onSubmit: (username?: string) => void;
@@ -45,11 +46,16 @@ export function UsernameInput({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Só usa a sugestão destacada no Enter se o usuário escolheu com as setas.
+  const [navigated, setNavigated] = useState(false);
   const query = value.trim().replace(/^@/, '');
-  const showList = open && !loading && (suggestionsLoading || suggestions.length > 0 || query.length >= 2);
+  const looksLikeLink = /[/:]/.test(query);
+  const showList =
+    open && !loading && !looksLikeLink && (suggestionsLoading || suggestions.length > 0 || query.length >= SEARCH_MIN_CHARS);
 
   useEffect(() => {
     setActiveIndex(0);
+    setNavigated(false);
   }, [suggestions, value]);
 
   useEffect(() => {
@@ -72,8 +78,14 @@ export function UsernameInput({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const active = suggestions[activeIndex];
-    if (open && active && query.length >= 2) {
+    if (open && navigated && active) {
       pickUser(active);
+      return;
+    }
+    // Enter busca exatamente o que foi digitado (aproveitando foto/nome se houver sugestão idêntica).
+    const exact = suggestions.find((user) => user.username.toLowerCase() === query.toLowerCase());
+    if (exact) {
+      pickUser(exact);
       return;
     }
     setOpen(false);
@@ -84,10 +96,12 @@ export function UsernameInput({
     if (!showList) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, Math.max(suggestions.length - 1, 0)));
+      if (navigated) setActiveIndex((i) => Math.min(i + 1, Math.max(suggestions.length - 1, 0)));
+      setNavigated(true);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
+      setNavigated(true);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
@@ -126,7 +140,7 @@ export function UsernameInput({
             aria-autocomplete="list"
             aria-expanded={showList}
             aria-controls={listId}
-            aria-activedescendant={showList && suggestions[activeIndex] ? `${listId}-${suggestions[activeIndex].id}` : undefined}
+            aria-activedescendant={showList && navigated && suggestions[activeIndex] ? `${listId}-${suggestions[activeIndex].id}` : undefined}
             role="combobox"
             disabled={loading}
             autoComplete="off"
@@ -134,7 +148,7 @@ export function UsernameInput({
           />
         </div>
         <Button type="submit" disabled={loading || !value.trim()}>
-          {loading ? 'Buscando…' : 'Buscar'}
+          {loading ? 'Buscando…' : looksLikeLink ? 'Abrir link' : 'Buscar'}
         </Button>
       </form>
 
@@ -142,12 +156,12 @@ export function UsernameInput({
         <ul id={listId} className={styles.list} role="listbox" aria-label="Perfis sugeridos">
           {suggestionsLoading && suggestions.length === 0 && (
             <li className={styles.status} role="status">
-              Procurando perfis parecidos…
+              Procurando perfis parecidos… (Enter busca “{query}”)
             </li>
           )}
           {!suggestionsLoading && suggestions.length === 0 && (
             <li className={styles.status} role="status">
-              Nenhum perfil encontrado para “{query}”.
+              Sem sugestões. Aperte Enter para abrir @{query}.
             </li>
           )}
           {suggestions.map((user, index) => {
@@ -158,9 +172,8 @@ export function UsernameInput({
                   type="button"
                   id={`${listId}-${user.id}`}
                   role="option"
-                  aria-selected={index === activeIndex}
-                  className={`${styles.option} ${index === activeIndex ? styles.optionActive : ''}`}
-                  onMouseEnter={() => setActiveIndex(index)}
+                  aria-selected={navigated && index === activeIndex}
+                  className={`${styles.option} ${navigated && index === activeIndex ? styles.optionActive : ''}`}
                   onClick={() => pickUser(user)}
                 >
                   {user.profilePicUrl ? (
